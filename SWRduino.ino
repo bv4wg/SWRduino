@@ -20,164 +20,152 @@
 #include <LiquidCrystal.h>
 //#include <OneWire.h>
 #include "SWRduino.h"
-
+#include <Adafruit_GPS.h>
+#include <SoftwareSerial.h>
 //#define __SIM
 
-#define PEAK_HOLD       5
-#define POWER_VAL       4
-#define SWR_VAL         13
-#define BAR_FULLSCALE   5
-#define BLK1            0
-#define BLK2            1
-#define FILL            1
-#define NOFILL          0
-#define PERSISTANCE     20
-#define BACKLIGHT_TIMER 100
-
-#define LCD_OFF         0
-#define SWRMODE         1
-#define SWRMODE_DIM     11
-#define LOCATION        2
-#define LOCATION_DIM    12
 
 int currentPeakPower;
-int SIM=0;
+int TESTMODE = 0;
 
 const int backlight =  10;
 const int switchpin =   6;
 
-byte bar1[8] = {
-  0b01000,
-  0b01000,
-  0b01000,
-  0b01000,
-  0b01000,
-  0b01000,
-  0b01000,
-  0b01000
-};
 
-byte bar2[8] = {
-  0b01001,
-  0b01001,
-  0b01001,
-  0b01001,
-  0b01001,
-  0b01001,
-  0b01001,
-  0b01001
-};
+int i=0;
+int reversePowerPin = A6;
+int forwardPowerPin = A5;
+int reversePower = 0;
+int forwardPower = 0;
+float calForwardValue;
+float calReverseValue;
+float calForwardPeak;
+float swr;
+int loopCount;
+int persistanceCount;
+int modesw;
 
-byte bar3[8] = {
-  0b00001,
-  0b00001,
-  0b00001,
-  0b00001,
-  0b00001,
-  0b00001,
-  0b00001,
-  0b00001
-};
+char mode;
+char firstFix = 0;
 
-  int i=0;
-  int reversePowerPin = A6;
-  int forwardPowerPin = A5;
-  int reversePower = 0;
-  int forwardPower = 0;
-  float calForwardValue;
-  float calReverseValue;
-  float calForwardPeak;
-  float swr;
-  int loopCount;
-  int modesw;
-
-  char mode;
-  
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 
 int dbar;
 int bars;
-  
+
+SoftwareSerial mySerial(8, 7);
+Adafruit_GPS GPS(&mySerial);
+
+#define GPSECHO  false
+boolean usingInterrupt = false;
+
+
 void setup() {
-  Serial.begin(115200);
-  pinMode(backlight, OUTPUT);
-  pinMode(switchpin, INPUT);
+	Serial.begin(115200);
 
-  modesw = digitalRead(switchpin);
-  if(modesw) SIM=1;
-    
-  while(modesw) {
-    modesw = digitalRead(switchpin);
-  }
+	pinMode(backlight, OUTPUT);
+	pinMode(switchpin, INPUT);
+
+	// Power up with button down for test mode
+	modesw = digitalRead(switchpin);
+	if(modesw) TESTMODE = 1;
  
-  lcd.createChar(0, bar1);  
-  lcd.createChar(1, bar2);  
-  lcd.createChar(2, bar3); 
-  lcd.begin(16, 2);
-  LCD_Setup(lcd);
+	while(modesw) {
+		modesw = digitalRead(switchpin);
+	}
 
-  digitalWrite(backlight, HIGH);
+	lcd.createChar(0, bar1);  
+	lcd.createChar(1, bar2);  
+	lcd.createChar(2, bar3); 
+	lcd.begin(16, 2);
 
-  modesw = digitalRead(switchpin);
-  if(modesw) SIM=1;
-    
-  while(modesw) {
-    modesw = digitalRead(switchpin);
-  }
-  currentPeakPower = 0;
-  mode = SWRMODE;
+	showIntro();
+	lcdON();
+
+	modesw = digitalRead(switchpin);
+	if(modesw) TESTMODE = 1;
+
+	while(modesw) {
+		modesw = digitalRead(switchpin);
+	}
+
+	currentPeakPower = 0;
+	mode = SWRMODE;
+
+
+	GPS.begin(9600);
+	GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
+	//GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCONLY);
+	GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);   // 1 Hz update rate
+	//GPS.sendCommand(PGCMD_ANTENNA);
+
+	useInterrupt(true);
+
+	delay(3000);
+
+	LCD_Setup(lcd);
 
 }
 
+uint32_t timer = millis();
 void loop() {
 
-  delay(100);
-  loopCount++;
+	delay(100);
+	persistanceCount++;
+	loopCount++;
 
-  modesw = digitalRead(switchpin);
+	modesw = digitalRead(switchpin);
 
-  if(modesw) {
-    loopCount = 0;
-    switch(mode) {
-      case SWRMODE:
-        mode = LOCATION;
-        digitalWrite(backlight, HIGH);
-        break;
-      case SWRMODE_DIM:
-        mode = SWRMODE;
-        digitalWrite(backlight, HIGH);
-        LCD_Setup(lcd);
-        break;
-      case LOCATION:
-        mode = SWRMODE;
-        digitalWrite(backlight, HIGH);   
-        LCD_Setup(lcd);            
-        break;
-      case LOCATION_DIM:
-        mode = LOCATION;
-        digitalWrite(backlight, HIGH); 
-        break;
-      default:
-        mode = SWRMODE;
-        break;
-    }
-  }
+	if(modesw) {
+		loopCount = 0;
+		switch(mode) {
+		case SWRMODE:
+			mode = LOCATION;
+			digitalWrite(backlight, HIGH);
+			break;
+		case SWRMODE_DIM:
+			mode = SWRMODE;
+			digitalWrite(backlight, HIGH);
+			LCD_Setup(lcd);
+			break;
+		case LOCATION:
+			mode = SWRMODE;
+			digitalWrite(backlight, HIGH);   
+			LCD_Setup(lcd);            
+			break;
+		case LOCATION_DIM:
+			mode = LOCATION;
+			digitalWrite(backlight, HIGH); 
+			break;
+		default:
+			mode = SWRMODE;
+			Serial.write("default");
+			break;
+		}
+  	}
 
-  if(loopCount > 200) {
-    mode += 10;
-    loopCount = 0;
-    lcdOFF();
-  }
+	if(loopCount > 400) {
+		mode += 10;
+		loopCount = 0;
+		lcdOFF();
+	}
 
-  switch(mode) {
-    case SWRMODE:
-      getSWR();
-      break;
-    case LOCATION:
-      getLocation();
-      break;
-    default:
-      break;
-  }
+	if(firstFix==0) {
+		if(GPS.fix){
+			firstFix = 1;
+			lcdON();
+		}
+	}
+
+	switch(mode) {
+		case SWRMODE:
+			getSWR();
+			break;
+		case LOCATION:
+			getLocation();
+	  		break;
+		default:
+			break;
+	}
 }

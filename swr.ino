@@ -16,41 +16,41 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ***********************************************************************/
 
- void getSWR(void) {
+void getSWR(void) {
 
-  if(SIM==1) {
-    forwardPower = 800;
-    reversePower = 100;
-  } else {
-    forwardPower = analogRead(reversePowerPin);
-    reversePower = analogRead(reversePowerPin);
-  }
-  
-  calForwardValue = 5.0 * (forwardPower/1023.0);
-  calReverseValue = 5.0 * (reversePower/1023.0);
-  calForwardPeak = 5.0 * (currentPeakPower/1023.0);
+	if(TESTMODE == 1) {
+		forwardPower = 800;
+		reversePower = 100;
+	} else {
+		forwardPower = analogRead(reversePowerPin);
+		reversePower = analogRead(reversePowerPin);
+	}
 
-  if(calForwardValue != 0)
-    swr = (1+sqrt(calReverseValue/calForwardValue))/(1-sqrt(calReverseValue/calForwardValue));
-  else
-    swr=0;
+	calForwardValue = 5.0 * (forwardPower/1023.0);
+	calReverseValue = 5.0 * (reversePower/1023.0);
+	calForwardPeak = 5.0 * (currentPeakPower/1023.0);
 
-  updatePower(calForwardValue);
-  updateSWR(swr);
+	if(calForwardValue != 0)
+		swr = (1+sqrt(calReverseValue/calForwardValue))/(1-sqrt(calReverseValue/calForwardValue));
+	else
+		swr=0;
 
-  if(forwardPower > currentPeakPower)
-    currentPeakPower = reversePower;
+	updatePower(calForwardValue);
+	updateSWR(swr);
 
-  if(loopCount==PERSISTANCE) {
-    currentPeakPower = forwardPower;
-    loopCount = 0;
-  }
-  getBarValue(calForwardValue, &bars, &dbar);
-  updateBar(FILL, bars, dbar);
+	if(forwardPower > currentPeakPower)
+		currentPeakPower = reversePower;
 
-  getBarValue(calForwardPeak, &bars, &dbar);
-  updateBar(NOFILL, bars, dbar);
+	if(persistanceCount==PERSISTANCE) {
+		currentPeakPower = forwardPower;
+		persistanceCount = 0;
+	}
+	getBarValue(calForwardValue, &bars, &dbar);
+	updateBar(FILL, bars, dbar);
 
-  return;
+	getBarValue(calForwardPeak, &bars, &dbar);
+	updateBar(NOFILL, bars, dbar);
+
+	return;
 }
 
