@@ -18,13 +18,13 @@
 
  void getSWR(void) {
 
-  #ifdef __SIM
-  forwardPower = 800;
-  reversePower = 100;
-#else
-  forwardPower = analogRead(reversePowerPin);
-  reversePower = analogRead(reversePowerPin);
-#endif
+  if(SIM==1) {
+    forwardPower = 800;
+    reversePower = 100;
+  } else {
+    forwardPower = analogRead(reversePowerPin);
+    reversePower = analogRead(reversePowerPin);
+  }
   
   calForwardValue = 5.0 * (forwardPower/1023.0);
   calReverseValue = 5.0 * (reversePower/1023.0);

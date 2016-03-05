@@ -21,7 +21,7 @@
 //#include <OneWire.h>
 #include "SWRduino.h"
 
-#define __SIM
+//#define __SIM
 
 #define PEAK_HOLD       5
 #define POWER_VAL       4
@@ -41,6 +41,7 @@
 #define LOCATION_DIM    12
 
 int currentPeakPower;
+int SIM=0;
 
 const int backlight =  10;
 const int switchpin =   6;
@@ -102,14 +103,28 @@ void setup() {
   Serial.begin(115200);
   pinMode(backlight, OUTPUT);
   pinMode(switchpin, INPUT);
-  
+
+  modesw = digitalRead(switchpin);
+  if(modesw) SIM=1;
+    
+  while(modesw) {
+    modesw = digitalRead(switchpin);
+  }
+ 
   lcd.createChar(0, bar1);  
   lcd.createChar(1, bar2);  
   lcd.createChar(2, bar3); 
   lcd.begin(16, 2);
   LCD_Setup(lcd);
+
   digitalWrite(backlight, HIGH);
 
+  modesw = digitalRead(switchpin);
+  if(modesw) SIM=1;
+    
+  while(modesw) {
+    modesw = digitalRead(switchpin);
+  }
   currentPeakPower = 0;
   mode = SWRMODE;
 
