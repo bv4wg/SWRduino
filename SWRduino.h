@@ -9,7 +9,7 @@
 #define BLK2            1
 #define FILL            1
 #define NOFILL          0
-#define PERSISTANCE     20
+#define PERSISTANCE     200
 #define BACKLIGHT_TIMER 100
 
 #define LCD_OFF         0
@@ -17,6 +17,7 @@
 #define SWRMODE_DIM     11
 #define LOCATION        2
 #define LOCATION_DIM    12
+#define DIM_TIMER		10		// dim timer in seconds
 
 void useInterrupt(boolean); 
 void showIntro(void);
@@ -63,5 +64,8 @@ char alpha[26] = {	'A','B','C','D','E','F','G',
 					'H','I','J','K','L','M','N',
 					'O','P','Q','R','S','T','U',
 					'V','W','X','Y','Z'};
+
+float FORWARD_CAL_FACTOR = 1023.0/406.0;
+float REVERSE_CAL_FACTOR = 1023.0/406.0;
 
 #endif

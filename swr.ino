@@ -22,13 +22,28 @@ void getSWR(void) {
 		forwardPower = 800;
 		reversePower = 100;
 	} else {
-		forwardPower = analogRead(reversePowerPin);
+		forwardPower = analogRead(forwardPowerPin);
 		reversePower = analogRead(reversePowerPin);
 	}
 
-	calForwardValue = 5.0 * (forwardPower/1023.0);
-	calReverseValue = 5.0 * (reversePower/1023.0);
-	calForwardPeak = 5.0 * (currentPeakPower/1023.0);
+	calForwardValue = 5.0 * (forwardPower/1023.0) * FORWARD_CAL_FACTOR;
+	calReverseValue = 5.0 * (reversePower/1023.0) * REVERSE_CAL_FACTOR;
+	calForwardPeak = 5.0 * (currentPeakPower/1023.0) * FORWARD_CAL_FACTOR;
+
+	// Serial.print("F - ");
+	// Serial.print(calForwardValue);
+	// Serial.print(" - ");
+	// Serial.print(forwardPower);
+
+	// Serial.print(", R - ");
+	// Serial.print(calReverseValue);
+	// Serial.print(" - ");
+	// Serial.println(reversePower);
+
+	if(calForwardValue > 0.2)
+		noDim = true;
+	else
+		noDim = false;
 
 	if(calForwardValue != 0)
 		swr = (1+sqrt(calReverseValue/calForwardValue))/(1-sqrt(calReverseValue/calForwardValue));
@@ -38,12 +53,15 @@ void getSWR(void) {
 	updatePower(calForwardValue);
 	updateSWR(swr);
 
-	if(forwardPower > currentPeakPower)
-		currentPeakPower = reversePower;
-
-	if(persistanceCount==PERSISTANCE) {
+	if(forwardPower > currentPeakPower){
 		currentPeakPower = forwardPower;
-		persistanceCount = 0;
+		lcdON();
+		mode = SWRMODE;
+	}
+
+	if(millis() - persistanceTimer > PERSISTANCE) {
+		currentPeakPower = forwardPower;
+		persistanceTimer = millis();
 	}
 	getBarValue(calForwardValue, &bars, &dbar);
 	updateBar(FILL, bars, dbar);

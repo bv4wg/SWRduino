@@ -41,9 +41,11 @@ float calForwardValue;
 float calReverseValue;
 float calForwardPeak;
 float swr;
-int loopCount;
-int persistanceCount;
+uint32_t  dimTimer;
+uint32_t  loopTimer;
+uint32_t  persistanceTimer;
 int modesw;
+boolean noDim = false;
 
 char mode;
 char firstFix = 0;
@@ -106,19 +108,24 @@ void setup() {
 
 	LCD_Setup(lcd);
 
+	dimTimer = millis();
+	loopTimer = millis();
+	persistanceTimer = millis();
 }
 
 uint32_t timer = millis();
 void loop() {
 
-	delay(100);
-	persistanceCount++;
-	loopCount++;
+	delay(10);
+	
+	if(dimTimer > millis()) dimTimer = millis();
+  	if(loopTimer > millis()) loopTimer = millis();
+  	if(persistanceTimer > millis()) persistanceTimer = millis();
 
 	modesw = digitalRead(switchpin);
 
 	if(modesw) {
-		loopCount = 0;
+		dimTimer = millis();
 		switch(mode) {
 		case SWRMODE:
 			mode = LOCATION;
@@ -143,13 +150,16 @@ void loop() {
 			Serial.write("default");
 			break;
 		}
+		delay(100);			// make sure we don't change modes more than once
   	}
 
-	if(loopCount > 400) {
+
+	if(millis() - dimTimer > (DIM_TIMER * 1000)) {
 		mode += 10;
-		loopCount = 0;
+		dimTimer = millis();
 		lcdOFF();
 	}
+
 
 	if(firstFix==0) {
 		if(GPS.fix){
@@ -158,14 +168,19 @@ void loop() {
 		}
 	}
 
-	switch(mode) {
-		case SWRMODE:
-			getSWR();
-			break;
-		case LOCATION:
-			getLocation();
-	  		break;
-		default:
-			break;
+	if(millis() - loopTimer > 500) {
+		switch(mode) {
+			case SWRMODE:
+			case SWRMODE_DIM:
+				getSWR();
+				break;
+			case LOCATION:
+			case LOCATION_DIM:
+				getLocation();
+		  		break;
+			default:
+				break;
+		}
+		loopTimer = millis();
 	}
 }
